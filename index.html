@@ -699,6 +699,189 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--primary-blue);
 }
+
+/* ===== Payment Verification Status ===== */
+.verification-status {
+  margin: 20px 0;
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.verification-status.pending {
+  background: linear-gradient(135deg, rgba(244, 213, 141, 0.15), rgba(244, 213, 141, 0.08));
+  border: 1px solid rgba(244, 213, 141, 0.3);
+  color: var(--accent-gold);
+}
+
+.verification-status.verified {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(52, 211, 153, 0.08));
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--success);
+}
+
+.verification-status.failed {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 107, 107, 0.08));
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: var(--danger);
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Sticky Admin Panel ===== */
+.admin-panel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 400px;
+  max-width: calc(100vw - 48px);
+  background: var(--gradient-card);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  z-index: 999;
+  transform: translateY(calc(100% + 24px));
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.admin-panel.visible {
+  transform: translateY(0);
+}
+
+.admin-header {
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(90, 125, 255, 0.1), rgba(90, 125, 255, 0.05));
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+}
+
+.admin-header h4 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.admin-body {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.session-item {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+
+.session-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--primary-blue);
+}
+
+.session-item h5 {
+  margin: 0 0 8px 0;
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+  font-family: 'Space Mono', monospace;
+}
+
+.session-item p {
+  margin: 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-small {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
+.toggle-admin {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-bright));
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 998;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-admin:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: var(--shadow-lg);
+}
+
+.toggle-admin.hidden {
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .admin-panel {
+    width: calc(100vw - 32px);
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .toggle-admin {
+    bottom: 16px;
+    right: 16px;
+  }
+}
 </style>
 </head>
 <body>
@@ -759,6 +942,13 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 
 // Session state (in-memory only - localStorage not available in iframe)
 let userState = {};
+let pendingSessions = [];
+let sessionWindows = [
+  { name: "Morning Window", endTime: new Date(Date.now() + 3 * 60 * 60 * 1000) },
+  { name: "Evening Window", endTime: new Date(Date.now() + 10 * 60 * 60 * 1000) },
+  { name: "Night Window", endTime: new Date(Date.now() + 18 * 60 * 60 * 1000) }
+];
+let currentWindowIndex = 0;
 
 const tiers = [
   {amount: 70, duration: "10 seconds", desc: "Dec 21-23 public fan session"},
@@ -848,8 +1038,77 @@ function showCustomDialog(message, type = 'info', onConfirm = null) {
   };
 }
 
+// Live Zelle Payment Verification Simulation - Only $70 succeeds
+function simulatePaymentVerification(sessionHash, tier, onUpdate) {
+  // Only $70 tier should succeed
+  const isValidPayment = tier.amount === 70;
+
+  const stages = isValidPayment ? [
+    { status: 'pending', message: 'Checking Zelle transaction...', duration: 2000 },
+    { status: 'pending', message: 'Verifying payment amount...', duration: 2500 },
+    { status: 'pending', message: 'Confirming sender details...', duration: 2000 },
+    { status: 'verified', message: 'Payment verified! Session confirmed.', duration: 0 }
+  ] : [
+    { status: 'pending', message: 'Checking Zelle transaction...', duration: 2000 },
+    { status: 'pending', message: 'Verifying payment amount...', duration: 2500 },
+    { status: 'failed', message: 'Error: Payment not confirmed. Please contact management.', duration: 0 }
+  ];
+
+  let currentStage = 0;
+
+  function processStage() {
+    if (currentStage < stages.length) {
+      const stage = stages[currentStage];
+      onUpdate(stage.status, stage.message);
+
+      if (stage.duration > 0) {
+        setTimeout(() => {
+          currentStage++;
+          processStage();
+        }, stage.duration);
+      } else {
+        // Payment verified - add to pending sessions (only if successful)
+        if (stage.status === 'verified') {
+          pendingSessions.push({
+            hash: sessionHash,
+            tier: tier,
+            timestamp: new Date(),
+            status: 'verified',
+            email: ''
+          });
+          updateAdminPanel();
+        }
+      }
+    }
+  }
+
+  processStage();
+}
+
+// Automatic Email Link Generator - Opens Gmail
+function generateGmailLink(sessionHash, tier) {
+  const to = 'lionslionsgateportalevents@gmail.com';
+  const subject = encodeURIComponent(`Lions Gate Session Confirmation - ${sessionHash}`);
+  const body = encodeURIComponent(`Hello Lions Gate Management,
+
+I have completed payment for a Lions Gate video session with the following details:
+
+Session Hash: ${sessionHash}
+Tier: $${tier.amount} - ${tier.duration}
+Description: ${tier.desc}
+Payment Method: Zelle
+Recipient: joancdy@gmail.com
+
+Please confirm my session booking.
+
+Thank you,
+[Your Name]`);
+
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
+}
+
 function openModal(tier) {
-  const sessionHash = userState.lastHash || Math.random().toString(36).substring(2, 12);
+  const sessionHash = 'LG-' + Math.random().toString(36).substring(2, 12).toUpperCase();
   userState.lastSelectedTier = tier;
   userState.lastHash = sessionHash;
 
@@ -859,25 +1118,79 @@ function openModal(tier) {
     <p style="font-size: 0.95rem;">
       <strong style="color: var(--text-primary);">Instructions:</strong><br>
       Send payment to <strong style="color: var(--accent-gold);">joancdy@gmail.com</strong> via Zelle.
-      After payment, click 'I've Paid', copy the generated session hash, and email it to management.
+      After payment, click 'I've Paid' to begin verification.
     </p>
     <label for='sessionHash' class='sr-only'>Session Hash</label>
-    <input type='text' readonly id='sessionHash' value='${sessionHash}' class='hash' aria-readonly='true'>
+    <input type='text' readonly id='sessionHash' value='${sessionHash}' class='hash' aria-readonly='true' onclick='this.select()'>
+    <div id='verificationContainer'></div>
     <div style='margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;'>
       <button class='btn' id='proceedBtn' style="flex: 1;">I've Paid</button>
+      <button class='btn ghost' id='emailBtn' style="flex: 1; display: none;">
+        <span style="margin-right: 6px;">✉</span> Email Management
+      </button>
       <button class='btn ghost' id='closeBtn' style="flex: 1;">Go Back</button>
     </div>
   `;
 
   modalBackdrop.classList.add('active');
 
-  document.getElementById('closeBtn').onclick = () => {
+  const verificationContainer = document.getElementById('verificationContainer');
+  const proceedBtn = document.getElementById('proceedBtn');
+  const emailBtn = document.getElementById('emailBtn');
+  const closeBtn = document.getElementById('closeBtn');
+
+  closeBtn.onclick = () => {
     modalBackdrop.classList.remove('active');
   };
 
-  document.getElementById('proceedBtn').onclick = () => {
-    showCustomDialog('Thank you! Your session hash has been noted. Follow the email instructions to confirm.', 'success');
-    modalBackdrop.classList.remove('active');
+  proceedBtn.onclick = () => {
+    proceedBtn.disabled = true;
+    proceedBtn.textContent = 'Verifying...';
+    proceedBtn.style.opacity = '0.6';
+
+    simulatePaymentVerification(sessionHash, tier, (status, message) => {
+      verificationContainer.innerHTML = `
+        <div class='verification-status ${status}'>
+          ${status === 'pending' ? '<div class="spinner"></div>' :
+            status === 'verified' ? '<span style="font-size: 20px;">✓</span>' :
+            '<span style="font-size: 20px;">✕</span>'}
+          <span>${message}</span>
+        </div>
+      `;
+
+      if (status === 'verified') {
+        proceedBtn.style.display = 'none';
+        emailBtn.style.display = 'inline-flex';
+        emailBtn.onclick = () => {
+          window.open(generateGmailLink(sessionHash, tier), '_blank');
+        };
+
+        showCustomDialog(
+          'Payment verified successfully! Click "Email Management" to send confirmation, or copy your session hash.',
+          'success'
+        );
+      } else if (status === 'failed') {
+        proceedBtn.style.display = 'none';
+        emailBtn.style.display = 'inline-flex';
+        emailBtn.textContent = '✉ Contact Management';
+        emailBtn.onclick = () => {
+          const subject = encodeURIComponent('Payment Verification Failed - Need Assistance');
+          const body = encodeURIComponent(`Hello Lions Gate Management,
+
+I attempted to verify my payment but received an error message.
+
+Session Hash: ${sessionHash}
+Tier: $${tier.amount} - ${tier.duration}
+Payment Method: Zelle to joancdy@gmail.com
+
+Please help me resolve this issue.
+
+Thank you,
+[Your Name]`);
+          window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=lionslionsgateportalevents@gmail.com&su=${subject}&body=${body}`, '_blank');
+        };
+      }
+    });
   };
 
   // Close modal on backdrop click
@@ -904,35 +1217,39 @@ tiers.forEach((t, index) => {
   grid.appendChild(btn);
 });
 
-// Countdown timer
+// Dynamic countdown based on session windows
 function updateCountdown() {
   const countdownEl = document.getElementById('countdown');
   if (!countdownEl) return;
 
-  const parts = countdownEl.textContent.split(':');
-  let hours = parseInt(parts[0]);
-  let minutes = parseInt(parts[1]);
-  let seconds = parseInt(parts[2]);
+  const currentWindow = sessionWindows[currentWindowIndex];
+  const now = new Date();
+  const timeRemaining = currentWindow.endTime - now;
 
-  seconds--;
-  if (seconds < 0) {
-    seconds = 59;
-    minutes--;
+  if (timeRemaining <= 0) {
+    // Move to next window
+    currentWindowIndex = (currentWindowIndex + 1) % sessionWindows.length;
+    // Reset the new window's end time
+    sessionWindows[currentWindowIndex].endTime = new Date(Date.now() + (3 + currentWindowIndex * 7) * 60 * 60 * 1000);
+    return;
   }
-  if (minutes < 0) {
-    minutes = 59;
-    hours--;
-  }
-  if (hours < 0) {
-    hours = 0;
-    minutes = 0;
-    seconds = 0;
-  }
+
+  const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+  const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
 
   countdownEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  // Update window name in urgent banner
+  const urgentEl = document.querySelector('.urgent');
+  if (urgentEl && !urgentEl.dataset.updated) {
+    urgentEl.innerHTML = `${currentWindow.name} ends in <span id="countdown" class="countdown" aria-live="polite">${countdownEl.textContent}</span>`;
+    urgentEl.dataset.updated = 'true';
+  }
 }
 
 setInterval(updateCountdown, 1000);
+updateCountdown();
 
 // 3D parallax effect on hero section
 const hero = document.querySelector('.hero');
@@ -975,7 +1292,132 @@ cards.forEach(card => {
     });
   }
 });
+
+// Admin Panel Setup
+const adminPanel = document.createElement('div');
+adminPanel.className = 'admin-panel';
+adminPanel.innerHTML = `
+  <div class="admin-header">
+    <h4>📊 Session Management</h4>
+    <button class="btn ghost btn-small" id="closeAdminPanel" style="padding: 6px 12px;">✕</button>
+  </div>
+  <div class="admin-body" id="adminBody">
+    <p style="color: var(--text-muted); text-align: center; padding: 20px;">No pending sessions</p>
+  </div>
+`;
+document.body.appendChild(adminPanel);
+
+const toggleAdminBtn = document.createElement('button');
+toggleAdminBtn.className = 'toggle-admin';
+toggleAdminBtn.innerHTML = '⚙';
+toggleAdminBtn.setAttribute('aria-label', 'Toggle Admin Panel');
+document.body.appendChild(toggleAdminBtn);
+
+// Admin Panel Functions
+function updateAdminPanel() {
+  const adminBody = document.getElementById('adminBody');
+
+  if (pendingSessions.length === 0) {
+    adminBody.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No pending sessions</p>';
+    return;
+  }
+
+  adminBody.innerHTML = pendingSessions.map((session, index) => {
+    const timeAgo = Math.floor((new Date() - session.timestamp) / 1000 / 60);
+    return `
+      <div class="session-item" data-index="${index}">
+        <h5>${session.hash}</h5>
+        <p><strong>Tier:</strong> $${session.tier.amount} - ${session.tier.duration}</p>
+        <p><strong>Status:</strong> <span style="color: ${session.status === 'verified' ? 'var(--success)' : session.status === 'activated' ? 'var(--primary-blue)' : 'var(--accent-gold)'};">${session.status}</span></p>
+        <p><strong>Time:</strong> ${timeAgo} min ago</p>
+        <div class="session-actions">
+          ${session.status === 'verified' ?
+            `<button class="btn btn-small" onclick="activateSession(${index})">✓ Activate</button>
+             <button class="btn ghost btn-small" onclick="sendConfirmationEmail(${index})">✉ Email</button>` :
+            session.status === 'activated' ?
+            `<button class="btn ghost btn-small" disabled style="opacity: 0.5;">Activated</button>` :
+            ''}
+          <button class="btn ghost btn-small" onclick="removeSession(${index})" style="color: var(--danger);">✕ Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function activateSession(index) {
+  if (pendingSessions[index]) {
+    pendingSessions[index].status = 'activated';
+    updateAdminPanel();
+    showCustomDialog(`Session ${pendingSessions[index].hash} has been activated!`, 'success');
+  }
+}
+
+function sendConfirmationEmail(index) {
+  if (pendingSessions[index]) {
+    const session = pendingSessions[index];
+    const subject = encodeURIComponent(`Session Confirmed - ${session.hash}`);
+    const body = encodeURIComponent(`Dear User,
+
+Your Lions Gate video session has been confirmed!
+
+Session Details:
+- Hash: ${session.hash}
+- Tier: $${session.tier.amount} - ${session.tier.duration}
+- Description: ${session.tier.desc}
+
+Your session will be scheduled shortly. You will receive a calendar invite with the meeting link.
+
+Thank you for your patience!
+
+Lions Gate Management`);
+
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+}
+
+function removeSession(index) {
+  if (pendingSessions[index]) {
+    const session = pendingSessions[index];
+    showCustomDialog(
+      `Are you sure you want to remove session ${session.hash}?`,
+      'warning',
+      () => {
+        pendingSessions.splice(index, 1);
+        updateAdminPanel();
+        showCustomDialog('Session removed successfully', 'info');
+      }
+    );
+  }
+}
+
+// Make functions globally accessible
+window.activateSession = activateSession;
+window.sendConfirmationEmail = sendConfirmationEmail;
+window.removeSession = removeSession;
+
+// Toggle Admin Panel
+toggleAdminBtn.onclick = () => {
+  const isVisible = adminPanel.classList.contains('visible');
+  if (isVisible) {
+    adminPanel.classList.remove('visible');
+    toggleAdminBtn.classList.remove('hidden');
+  } else {
+    adminPanel.classList.add('visible');
+    toggleAdminBtn.classList.add('hidden');
+  }
+};
+
+document.getElementById('closeAdminPanel').onclick = () => {
+  adminPanel.classList.remove('visible');
+  toggleAdminBtn.classList.remove('hidden');
+};
+
+// Auto-refresh admin panel every 10 seconds
+setInterval(() => {
+  if (adminPanel.classList.contains('visible')) {
+    updateAdminPanel();
+  }
+}, 10000);
 </script>
 </body>
 </html>
-
