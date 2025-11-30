@@ -943,12 +943,39 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', eve
 // Session state (in-memory only - localStorage not available in iframe)
 let userState = {};
 let pendingSessions = [];
-let sessionWindows = [
-  { name: "Morning Window", endTime: new Date(Date.now() + 3 * 60 * 60 * 1000) },
-  { name: "Evening Window", endTime: new Date(Date.now() + 10 * 60 * 60 * 1000) },
-  { name: "Night Window", endTime: new Date(Date.now() + 18 * 60 * 60 * 1000) }
-];
-let currentWindowIndex = 0;
+
+// Fixed target time: 10:00 AM EST (consistent across all devices and sessions)
+function getNextTargetTime() {
+  // Get current time
+  const now = new Date();
+
+  // Create a date object for 10:00 AM EST today
+  // EST is UTC-5 (or EDT UTC-4 during daylight saving)
+  // We'll use a fixed approach: 10 AM EST = 3 PM UTC (15:00 UTC) during standard time
+  // For simplicity, we'll calculate 10 AM in EST timezone
+
+  const targetDate = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  targetDate.setHours(10, 0, 0, 0);
+
+  // Convert back to local timezone for comparison
+  const targetUTC = new Date(targetDate.toLocaleString("en-US", { timeZone: "America/New_York" }));
+
+  // If we've passed 10 AM EST today, set target to 10 AM EST tomorrow
+  const nowEST = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const todayTarget = new Date(nowEST);
+  todayTarget.setHours(10, 0, 0, 0);
+
+  if (nowEST >= todayTarget) {
+    // Move to tomorrow
+    todayTarget.setDate(todayTarget.getDate() + 1);
+  }
+
+  // Convert the EST time to user's local time
+  const estString = todayTarget.toLocaleString("en-US", { timeZone: "America/New_York" });
+  return new Date(estString);
+}
+
+let targetEndTime = getNextTargetTime();
 
 const tiers = [
   {amount: 70, duration: "10 seconds", desc: "Dec 21-23 public fan session"},
@@ -1217,20 +1244,17 @@ tiers.forEach((t, index) => {
   grid.appendChild(btn);
 });
 
-// Dynamic countdown based on session windows
+// Dynamic countdown to 10:00 AM EST (persistent across all devices and sessions)
 function updateCountdown() {
   const countdownEl = document.getElementById('countdown');
   if (!countdownEl) return;
 
-  const currentWindow = sessionWindows[currentWindowIndex];
   const now = new Date();
-  const timeRemaining = currentWindow.endTime - now;
+  const timeRemaining = targetEndTime - now;
 
+  // If countdown reached zero, set next day's 10 AM EST as target
   if (timeRemaining <= 0) {
-    // Move to next window
-    currentWindowIndex = (currentWindowIndex + 1) % sessionWindows.length;
-    // Reset the new window's end time
-    sessionWindows[currentWindowIndex].endTime = new Date(Date.now() + (3 + currentWindowIndex * 7) * 60 * 60 * 1000);
+    targetEndTime = getNextTargetTime();
     return;
   }
 
@@ -1240,10 +1264,10 @@ function updateCountdown() {
 
   countdownEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Update window name in urgent banner
+  // Update window name in urgent banner once
   const urgentEl = document.querySelector('.urgent');
   if (urgentEl && !urgentEl.dataset.updated) {
-    urgentEl.innerHTML = `${currentWindow.name} ends in <span id="countdown" class="countdown" aria-live="polite">${countdownEl.textContent}</span>`;
+    urgentEl.innerHTML = `Window ends in <span id="countdown" class="countdown" aria-live="polite">${countdownEl.textContent}</span>`;
     urgentEl.dataset.updated = 'true';
   }
 }
